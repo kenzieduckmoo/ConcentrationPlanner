@@ -1,3 +1,11 @@
+# 0.4.0
+
+- Replace compact's alt roster with the logged-in character and every visible profession, regardless of whether work is due.
+- Show each profession's concentration cap time (or Full now), next patron check date and local AM/PM reset time, plus its Done button.
+- Wait until the regional daily reset before showing today's patron tasks in Daily; keep unfinished earlier tasks overdue.
+- Preserve early Done, automatic four-day schedules, prior-expansion visibility, opacity, and saved window geometry.
+- Keep custom notes in the full planner instead of the character-focused compact dashboard.
+
 # 0.3.0
 
 - Rename display title to DuckMoo Services: Concentration Planner by DuckMoo Media.

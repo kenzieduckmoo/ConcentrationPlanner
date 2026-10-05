@@ -55,6 +55,23 @@ function M.Complete(r, now)
         s.due = M.NextWeekday(M.AddDays(now,1),s.weekday)
     end
 end
+-- Use the regional reset API's epoch anchor, including local DST changes.
+function M.PatronResetAt(day, now, dailySeconds)
+    if type(dailySeconds)~='number' or dailySeconds<0 then return nil end
+    local anchor=now+dailySeconds
+    local target=M.Key(day)
+    local at=anchor+floor((M.Day(day)-M.Day(anchor))/86400)*86400
+    while M.Key(at)<target do at=at+86400 end
+    while M.Key(at)>target do at=at-86400 end
+    return at
+end
+function M.PatronDue(r,now,dailySeconds)
+    local s=r.patron
+    if not s or not s.due then return false end
+    if M.Day(s.due)<M.Day(now) then return true end
+    local at=M.PatronResetAt(s.due,now,dailySeconds)
+    return at~=nil and at<=now
+end
 function M.PatronDates(s, first, last, now)
     local out = {}
     if not s or not s.due or s.due >= last then return out end

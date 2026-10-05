@@ -30,11 +30,11 @@ Older data continues to be collected when accessible. Disabling its display does
 
 Click **Compact** in the full window, or use `/planner compact`.
 
-- Today-only roster, with each pending character listed once.
-- Characters appear for already full Concentration, caps later today, or patron orders due/overdue.
-- Patron **Done** buttons for every visible profession on that character. If no patron schedule exists, the click creates the default four-day schedule and marks the profession complete, making its next reminder four days after today. Existing schedules keep their configured mode. You may also mark orders done early.
-- Hover a character for its task details; hover a profession button for its patron deadline.
-- Due custom notes appear below the character roster.
+- Always shows only the logged-in character, even when no work is due.
+- Each visible profession shows its concentration cap date and local AM/PM time, or **Full now**. Unknown snapshots prompt you to open the profession.
+- Shows the next patron check date and regional daily-reset time, with Due/Overdue status only once actionable.
+- Patron **Done** buttons remain available for every visible profession. Clicking before setup creates the default four-day schedule and completes it. You may mark orders done early.
+- Custom notes stay in the full Daily/Weekly planner and Notes tab.
 - Defaults to 65% opacity. Settings has a 20–100% slider. Full view has its own opacity slider, defaulting to 85%.
 - **Expand** or `/planner full` restores the full window.
 
@@ -56,7 +56,7 @@ All dates and AM/PM times use the computer's local clock.
 
 **Settings:** Separate Roster, Appearance and About sections. Roster pins the logged-in character, then offers a paginated, sortable alt list. Appearance has login behavior, minimap visibility, and separate full/compact opacity sliders. About explains the addon and lists DuckMoo Media and creator information.
 
-The full-window search filters characters, realms, professions, expansions and note text. Compact mode always shows the complete Today roster, regardless of an old search term.
+The full-window search filters characters, realms, professions, expansions and note text. Compact mode always shows the logged-in character, regardless of an old search term.
 
 ## Roster at scale
 
@@ -128,7 +128,7 @@ Notes are account-wide, not bound to a character. You can include a character na
 | Command | Action |
 | --- | --- |
 | `/planner` | Toggle the window in its last mode |
-| `/planner compact` | Open compact Today roster |
+| `/planner compact` | Open compact character dashboard |
 | `/planner full` | Open full window |
 | `/planner today` | Open full daily view at today |
 | `/planner daily` | Open full daily view |
@@ -163,10 +163,13 @@ These tests mock native frames and APIs. They do not establish pixel-perfect lay
 1. Existing characters/patron schedules remain, with only Midnight visible initially.
 2. Prior expansions can be expanded and enabled in Settings.
 3. Resize both modes, change opacity, and reload to check persistence.
-4. Confirm compact groups each character once and Done affects only that profession.
+4. Confirm compact shows only the logged-in character, future cap/check times, and Done affects only that profession.
+5. Confirm today's patron tasks appear after regional daily reset; earlier unfinished tasks remain overdue.
 5. Check daily/weekly countdowns against the game clock.
 6. Add, dismiss, edit and delete a custom note; try each repeat option.
 
 For Lua errors, enable `/console scriptErrors 1` and provide the first error and build number from `/dump select(4, GetBuildInfo())`.
 
 Source references: [Blizzard API source mirror](https://github.com/Gethe/wow-ui-source), [CraftSim profession skill-line constants](https://github.com/derfloh205/CraftSim/blob/main/Util/Const.lua) and [CraftSim concentration model](https://github.com/derfloh205/CraftSim/blob/main/Classes/ConcentrationData.lua). DuckMoo Planner is an independent implementation.
+
+Patron reminder dates start at that date's regional daily reset, rather than local midnight. Before reset, today's patron work stays out of the Daily task list. Compact displays its scheduled time without calling it due. If the reset API is unavailable, today's new reminder waits until the API recovers; earlier overdue work remains visible.
