@@ -399,4 +399,65 @@ s.hideMinimap=true;P.CreateMinimap();assert(not P.minimap:IsShown())
 s.hideMinimap=false;P.CreateMinimap();assert(P.minimap:IsShown())
 print('PASS: unscheduled compact Done, upcoming-only weeks, 400-character paging/filtering/sorting, multiple and bulk groups, current-character pinning, full opacity, About and minimap interactions')
 ''')
+lua.execute(r'''
+local M=P.Model
+local savedNow=NOW;local api=C_DateAndTime
+local today=M.ParseDay('2026-10-05');local reset=today+10*3600
+NOW=reset-1
+C_DateAndTime={GetSecondsUntilDailyReset=function() return (NOW<reset and reset or reset+86400)-NOW end,
+ GetSecondsUntilWeeklyReset=function() return 86400 end}
+local c=P.db.characters['Player-1'];local r=c.professions[2906]
+M.SetSchedule(r,'four',today)
+assert(M.PatronResetAt(today,NOW,1)==reset)
+assert(not M.PatronDue(r,NOW,1))
+NOW=reset
+assert(M.PatronDue(r,NOW,86400))
+assert(M.PatronResetAt(today,NOW,86400)==reset)
+-- Region reset can have a different local hour; do not assume NA or 10 AM.
+NOW=today+5*3600
+assert(M.PatronResetAt(today,NOW,2*3600)==today+7*3600)
+assert(not M.PatronDue(r,NOW,2*3600))
+NOW=today+8*3600
+assert(M.PatronDue(r,NOW,23*3600))
+assert(not M.PatronDue(r,NOW,nil))
+M.SetSchedule(r,'four',M.AddDays(today,-1));assert(M.PatronDue(r,NOW,nil))
+-- Reset anchor preserves the epoch across the local DST transition.
+local autumn=M.ParseDay('2026-11-01');local nextReset=M.ParseDay('2026-11-02')+9*3600
+assert(M.PatronResetAt(autumn,nextReset-86400,86400)==autumn+10*3600)
+-- Daily actually hides today's task before reset, then reveals it at reset.
+M.SetSchedule(r,'four',today);P.followToday=true
+local original=P.EventRow;local seen={}
+P.EventRow=function(e) seen[#seen+1]=e end
+NOW=reset-1;P.SetCompact(false);P.Show('daily')
+for _,e in ipairs(seen) do assert(not(e.kind=='patron' and e.record==r)) end
+NOW=reset;seen={};P.Render(true)
+local found=false
+for _,e in ipairs(seen) do if e.kind=='patron' and e.record==r then found=true end end
+assert(found)
+P.EventRow=original
+-- Compact includes future work, never another character or global notes.
+r.amount=100;r.max=1000;r.observedAt=NOW;r.secondsPerPoint=240
+M.SetSchedule(r,'four',M.AddDays(today,4))
+P.db.settings.includePrior=false;P.filter='does not match'
+local full=M.FullAt(r);P.SetCompact(true)
+local texts={}
+for _,widget in ipairs(P.widgets) do
+ if widget:IsShown() then
+  texts[#texts+1]=widget:GetText()
+  for _,pool in pairs(widget._dmpPools or {}) do
+   for _,child in ipairs(pool) do if child:IsShown() then texts[#texts+1]=child:GetText() end end
+  end
+ end
+end
+local text=table.concat(texts,'\n')
+assert(text:find('Voidchicken-Garona',1,true))
+assert(text:find('Concentration: '..date('%b %d',full)..', '..M.Clock(full),1,true))
+assert(text:find('Patrons: Oct 09, 10:00 AM',1,true))
+assert(text:find('Alchemy Done',1,true))
+assert(not text:find('Alt001',1,true))
+assert(not text:find('Keep this reminder',1,true))
+assert(not text:find('Prior-expansion',1,true))
+NOW=savedNow;C_DateAndTime=api;P.filter=''
+print('PASS: current-character compact future timestamps, reset-gated Daily reminders, regional reset hours, API failure and DST')
+''')
 print('All checks passed. WoW client integration still requires in-game verification.')

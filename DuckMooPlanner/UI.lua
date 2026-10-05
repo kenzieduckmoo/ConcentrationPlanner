@@ -263,7 +263,7 @@ function P.EventRow(e,y)
     name:SetWordWrap(false);if color then name:SetTextColor(color.r,color.g,color.b) end
     local prof=label(row,profession(e.record),math.floor(w*.44),-5,w-math.floor(w*.44)-85,'GameFontHighlightSmall');prof:SetWordWrap(false)
     label(row,description(e),8,-23,w-90,'GameFontHighlightSmall')
-    if e.kind=='patron' and M.Day(e.at)<=M.Day(GetServerTime()) then
+    if e.kind=='patron' and not e.projected and M.PatronDue(e.record,GetServerTime(),P.GetResetSeconds('daily')) then
         button(row,'Done',w-72,-8,64,function() M.Complete(e.record,GetServerTime());P.Render(true) end)
     end
     local r=e.record;local amount=M.Current(r,GetServerTime())
@@ -277,6 +277,13 @@ function P.Daily(now)
     local first=M.Day(P.selectedDay or now);local last=M.AddDays(first,1)
     P.heading:SetText(date('%A, %b %d, %Y',first))
     local events=M.Events(P.db,first,last,now,M.Day(now)==first,true,P.filter)
+    if first==M.Day(now) then
+        local ready={};local seconds=P.GetResetSeconds('daily')
+        for _,e in ipairs(events) do
+            if e.kind~='patron' or M.PatronDue(e.record,now,seconds) then ready[#ready+1]=e end
+        end
+        events=ready
+    end
     local intro=P.Text('Log into each character and open both crafting professions once. /planner or /dmp opens this window.\nAll dates and AM/PM times use your computer local time.',4,0,P.width-8,'GameFontHighlightSmall')
     intro:SetWordWrap(true);intro:SetHeight(32)
     for i,e in ipairs(events) do P.EventRow(e,38+(i-1)*43) end
@@ -339,31 +346,47 @@ function P.Monthly(now)
     P.content:SetHeight(22+rows*(cellHeight+2))
 end
 function P.Compact(now)
-    local groups,notes=M.TodayGroups(P.db,now,'') -- full-window search must not hide compact work
-    local y=0
-    for _,g in ipairs(groups) do
-        local c=P.db.characters[g.guid];local professions={}
-        for id,r in pairs(c.professions) do if M.Visible(P.db,r,id) then professions[#professions+1]={id=id,r=r} end end
-        table.sort(professions,function(a,b) if a.r.name~=b.r.name then return a.r.name<b.r.name end;return a.id<b.id end)
-        local perLine=math.max(1,math.floor((P.width-12)/125))
-        local buttonRows=math.ceil(#professions/perLine)
-        local height=24+buttonRows*24
-        local row=P.Widget(panel(P.content));row:SetSize(P.width,height);row:SetPoint('TOPLEFT',0,-y)
-        local name=label(row,g.name,6,-5,P.width-12);name:SetWordWrap(false)
-        local color=RAID_CLASS_COLORS and RAID_CLASS_COLORS[c.class];if color then name:SetTextColor(color.r,color.g,color.b) end
-        local lines={}
-        for _,e in ipairs(g.events) do lines[#lines+1]=profession(e.record)..': '..description(e) end
-        tooltip(row,g.name,lines)
-        for i,v in ipairs(professions) do
-            local r=v.r
-            local b=button(row,r.name..' Done',6+((i-1)%perLine)*125,-24-math.floor((i-1)/perLine)*24,121,function() M.CompletePatron(r,GetServerTime());P.Render(true) end)
-            b:SetHeight(21)
-            tooltip(b,profession(r)..' patron orders',{r.patron and ('Next due: '..M.Key(r.patron.due)) or 'No schedule yet: click Done to start the default four-day rotation.','Mark this profession complete. Four-day schedules restart from today; weekly schedules keep their weekday.','You may mark orders done early.'})
+    local c=P.Character();local y=0
+    if c then
+        local name=P.Text(c.name..'-'..c.realm,6,-3,P.width-12,'GameFontNormal')
+        name:SetWordWrap(false)
+        local color=RAID_CLASS_COLORS and RAID_CLASS_COLORS[c.class]
+        if color then name:SetTextColor(color.r,color.g,color.b) end
+        y=25
+        local professions={}
+        for id,r in pairs(c.professions) do
+            if M.Visible(P.db,r,id) then professions[#professions+1]={id=id,r=r} end
         end
-        y=y+height+3
+        table.sort(professions,function(a,b) if a.r.name~=b.r.name then return a.r.name<b.r.name end;return a.id<b.id end)
+        local seconds=P.GetResetSeconds('daily')
+        local function stamp(at) return date('%b %d',at)..', '..M.Clock(at) end
+        for _,v in ipairs(professions) do
+            local r=v.r;local full=M.FullAt(r)
+            local concentration=not full and 'Open profession to refresh' or (full<=now and 'Full now' or stamp(full))
+            local patrons='Not scheduled'
+            if r.patron then
+                local at=M.PatronResetAt(r.patron.due,now,seconds)
+                if M.PatronDue(r,now,seconds) then
+                    patrons=(M.Day(r.patron.due)<M.Day(now) and 'Overdue: ' or 'Due: ')..(at and stamp(at) or M.Key(r.patron.due))
+                else
+                    patrons=at and stamp(at) or (M.Key(r.patron.due)..' (reset unavailable)')
+                end
+            end
+            local row=P.Widget(panel(P.content));row:SetSize(P.width,74);row:SetPoint('TOPLEFT',0,-y)
+            label(row,r.name,6,-6,P.width-122):SetWordWrap(false)
+            local b=button(row,r.name..' Done',P.width-112,-3,106,function() M.CompletePatron(r,GetServerTime());P.Render(true) end)
+            b:SetHeight(21)
+            label(row,'Concentration: '..concentration,6,-29,P.width-12,'GameFontHighlightSmall'):SetWordWrap(false)
+            label(row,'Patrons: '..patrons,6,-49,P.width-12,'GameFontHighlightSmall'):SetWordWrap(false)
+            tooltip(row,profession(r),{'Concentration: '..concentration,'Patrons: '..patrons,'All dates and times are local. Patron reminders start after daily reset.'})
+            tooltip(b,profession(r)..' patron orders',{'Next check: '..patrons,'Click Done to mark orders complete. Without a schedule, this starts the default four-day rotation.','You may mark orders done early.'})
+            y=y+77
+        end
+        if #professions==0 then
+            local text=P.Text('Open your crafting professions to collect data. Check prior-expansion visibility in Settings if needed.',6,-y,P.width-12,'GameFontHighlightSmall')
+            text:SetWordWrap(true);text:SetHeight(40);y=y+43
+        end
     end
-    for _,e in ipairs(notes) do P.EventRow(e,y);y=y+43 end
-    if #groups==0 and #notes==0 then P.Empty(3) end
     P.content:SetHeight(math.max(24,y))
     if not P.db.settings.compactSize and not P.resizing then
         local height=math.min(420,UIParent:GetHeight()-20,math.max(110,y+83))
@@ -738,7 +761,7 @@ function P.About(now)
     end
     paragraph(P.fullName,27,'GameFontNormalLarge')
     paragraph('By DuckMoo Media | v'..P.version..' | Another suspiciously useful thing by DuckMoo Media.',30,'GameFontHighlightSmall')
-    paragraph('Your alt army has Concentration. You have approximately twelve browser tabs open in your brain. This is mission control for the crafting gremlins: recharge forecasts, patron reminders, a calendar, and a tiny roster that tells you who to hop onto next.',68)
+    paragraph('Your alt army has Concentration. You have approximately twelve browser tabs open in your brain. This is mission control for the crafting gremlins: recharge forecasts, patron reminders, a calendar, and a compact dashboard for the character you are on.',68)
     paragraph('Deploy the ducks: log into each character and open both crafting professions once. Use /planner or /dmp, or click the minimap duck. Daily catches full bars and today\'s work. Weekly looks ahead. Monthly puts future caps on actual dates. Compact keeps the marching orders small.',68)
     paragraph('Wrangle the horde in Settings > Roster: pin your current character, filter by profession or realm, sort the alt army, and make your own groups. Check several characters and use Group selected to assign them together. Prior expansions stay tucked away until invited.',68)
     paragraph('Patron Done starts a four-day schedule if you have not set one. Configure a weekday if that suits your routine better. Add custom notes for all the side quests your actual brain refuses to keep in RAM.',54)
