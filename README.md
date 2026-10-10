@@ -2,7 +2,7 @@
 
 By **DuckMoo Media**. A WoW Retail calendar and daily planner for concentration alts, patron orders, and the many tiny tasks that nibble on a crafting gremlin's brain.
 
-Current addon version: **0.4.0**.
+Current addon version: **0.5.2**.
 
 ## Install
 
