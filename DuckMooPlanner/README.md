@@ -1,8 +1,12 @@
-# DuckMoo Services: Concentration Planner 0.3.0
+# DuckMoo Services: Concentration Planner 0.5.2
 
 By DuckMoo Media. Another suspiciously useful thing by DuckMoo Media.
 
 A standalone WoW Retail calendar, crafting planner and reminder addon for Kenzie DuckMoo. No CraftSim or other addon dependency.
+
+The full window now follows Folio's sidebar design, with persistent search, Refresh and quick note controls. Daily planning separates concentration, patron checks and custom reminders beneath summary cards. Weekly and monthly views preserve their date/reset behavior inside the new frame. Preferences > Appearance offers the approved Folio palettes, including original Purple, distinct Classic Plum, warm pastel Light Mode, Trans Pride and Trans Pride Dusk.
+
+The compact current-character dashboard retains its layout, dense/standard row options, Checked patrons actions, auto-fit behavior and separately saved position/size. The new full window defaults to 1040 by 740 with a supported minimum of 940 by 560; older smaller full-window sizes are expanded to fit the sidebar. Concentration snapshots, patron schedules, reminders, groups and visibility choices are preserved.
 
 ## Upgrade from 0.1.0 or 0.2.0
 
@@ -22,7 +26,7 @@ Interface versions: 120005, 120007 and 120100. This update has offline Lua 5.1 t
 
 Midnight entries are shown by default. Recognition uses verified skill-line IDs, so English profession names are not required.
 
-Settings contains a collapsed **Prior expansions** section. Expand it and enable **Include prior expansions in planner views** to include older currencies. Individual Hide/Unhide choices remain available within each section. An entry you manually hid stays hidden even when its expansion is enabled. Forget asks for confirmation before deleting one profession snapshot and its patron schedule.
+Preferences contains a collapsed **Prior expansions** section. Expand it and enable **Include prior expansions in planner views** to include older currencies. Individual Hide/Unhide choices remain available within each section. An entry you manually hid stays hidden even when its expansion is enabled. Forget asks for confirmation before deleting one profession snapshot and its patron schedule.
 
 Older data continues to be collected when accessible. Disabling its display does not erase it.
 
@@ -33,9 +37,9 @@ Click **Compact** in the full window, or use `/planner compact`.
 - Always shows only the logged-in character, even when no work is due.
 - Each visible profession shows its concentration cap date and local AM/PM time, or **Full now**. Unknown snapshots prompt you to open the profession.
 - Shows the next patron check date and regional daily-reset time, with Due/Overdue status only once actionable.
-- Patron **Done** buttons remain available for every visible profession. Clicking before setup creates the default four-day schedule and completes it. You may mark orders done early.
-- Custom notes stay in the full Daily/Weekly planner and Notes tab.
-- Defaults to 65% opacity. Settings has a 20–100% slider. Full view has its own opacity slider, defaulting to 85%.
+- **Checked patrons** buttons remain available for every visible profession. Clicking records your check-in and starts the default four-day reminder if none exists. You may check early; this does not verify whether orders were completed.
+- Custom notes stay in the full Daily/Weekly planner and Reminders page.
+- Defaults to 65% opacity. Preferences has a 20–100% slider. Full view has its own opacity slider, defaulting to 85%.
 - **Expand** or `/planner full` restores the full window.
 
 Drag the lower-right corner to resize either mode. Full and compact sizes and positions are stored separately. The initial compact window fits its current content up to a bounded height; once a size is saved, it respects that size and scrolls longer lists. The last mode and full-view tab are remembered across reloads/logins. The login checkbox opens the last view/mode automatically.
@@ -52,15 +56,15 @@ All dates and AM/PM times use the computer's local clock.
 
 **Monthly:** Upcoming Concentration caps and dated custom notes. Already full bars are excluded; patron reminders remain in the daily/weekly views. Up to two entries are visible per cell, with a `+N more` count. Hover for the full contents; click a date for the daily planner.
 
-**Notes:** Editable list of active and dismissed custom reminders.
+**Reminders:** Editable list of active and dismissed custom reminders.
 
-**Settings:** Separate Roster, Appearance and About sections. Roster pins the logged-in character, then offers a paginated, sortable alt list. Appearance has login behavior, minimap visibility, and separate full/compact opacity sliders. About explains the addon and lists DuckMoo Media and creator information.
+**Preferences:** Separate Roster, Appearance and About sections. Roster pins the logged-in character, then offers a paginated, sortable alt list. Appearance has login behavior, minimap visibility, and separate full/compact opacity sliders. About explains the addon and lists DuckMoo Media and creator information.
 
 The full-window search filters characters, realms, professions, expansions and note text. Compact mode always shows the logged-in character, regardless of an old search term.
 
 ## Roster at scale
 
-Settings > Roster pins the logged-in character and all its displayed professions above the alt controls. That pinned character is not hidden by a realm, profession, group or search filter. The alt list excludes the pinned character to avoid duplicate rows.
+Preferences > Roster pins the logged-in character and all its displayed professions above the alt controls. That pinned character is not hidden by a realm, profession, group or search filter. The alt list excludes the pinned character to avoid duplicate rows.
 
 - Filter alts by profession, realm or custom group. Each chooser has text search and a scrollable list.
 - Sort by character name, realm, profession or group, ascending or descending.
@@ -76,15 +80,15 @@ Prior expansion rows remain folded away by default. Expand **Prior expansions** 
 
 ## Minimap button
 
-A duck-calendar button sits around the minimap. Left-click opens/closes the planner; right-click opens Settings; Shift-click changes compact mode. Drag it around the minimap to reposition it. Its angle and visibility are saved. Hide/show it through Settings > Appearance or `/planner minimap`. It has no external library dependency and supports the native round minimap and square layout.
+A duck-calendar button sits around the minimap. Left-click opens/closes the planner; right-click opens Preferences; Shift-click changes compact mode. Drag it around the minimap to reposition it. Its angle and visibility are saved. Hide/show it through Preferences > Appearance or `/planner minimap`. It has no external library dependency and supports the native round minimap and square layout.
 
 ## Appearance and About
 
 Rounded purple surfaces, custom buttons with hover/press feedback, active-tab markers and slim status accents replace the stock boxed button layout. Existing resize and mode-specific geometry behavior remains.
 
-Settings > Appearance has independent opacity controls: **Full window 85%** and **Compact window 65%** by default, adjustable from 20% to 100%. The Daily onboarding text again explains character registration, slash commands and the local clock.
+Preferences > Appearance has independent opacity controls: **Full window 85%** and **Compact window 65%** by default, adjustable from 20% to 100%. The Daily onboarding text again explains character registration, slash commands and the local clock.
 
-Settings > About lists **DuckMoo Services: Concentration Planner**, **DuckMoo Media**, the addon purpose, registration and planner workflow, and the following user-provided creator information:
+Preferences > About lists **DuckMoo Services: Concentration Planner**, **DuckMoo Media**, the addon purpose, registration and planner workflow, and the following user-provided creator information:
 
 - Amazon: `amazon.com/author/kenzieduckmoo`
 - Twitch, AO3, Threads, Instagram, TikTok and YouTube: `@KenzieDuckMoo`
@@ -94,9 +98,9 @@ Copy buttons select the page/handle text for Ctrl+C. The addon does not open a b
 
 ## Patron reminders
 
-Each profession has its own schedule in Settings. Click **Patron schedule**, choose four days or a fixed weekday, enter the first due date, and save. The weekday button cycles through Sunday–Saturday.
+Each profession has its own schedule in Preferences. Click **Patron schedule**, choose four days or a fixed weekday, enter the first due date, and save. The weekday button cycles through Sunday–Saturday.
 
-Four-day schedules restart from the civil day you click Done. Thursday completion schedules Monday; late Friday completion schedules Tuesday. Weekly schedules keep the selected weekday. Completing Sunday schedules next Sunday; finishing late Monday schedules the coming Sunday.
+Four-day schedules restart from the civil day you click Checked patrons. Thursday completion schedules Monday; late Friday completion schedules Tuesday. Weekly schedules keep the selected weekday. Completing Sunday schedules next Sunday; finishing late Monday schedules the coming Sunday.
 
 Missed work stays visible. Later dates are marked forecasts until completion determines the next actual due date. Reminder completion is manual, not automatic detection of patron order availability or completion of an individual in-game order.
 
@@ -136,7 +140,7 @@ Notes are account-wide, not bound to a character. You can include a character na
 | `/planner monthly` | Open full calendar |
 | `/planner reminders` | Open Notes |
 | `/planner note` | Open Notes and the new reminder editor |
-| `/planner settings` | Open Settings |
+| `/planner settings` | Open Preferences |
 | `/planner about` | Open the About section |
 | `/planner minimap` | Hide/show the minimap button |
 | `/planner scan` | Scan the open profession |
@@ -156,14 +160,14 @@ No crafting, order submission or character switching is automated.
 
 Run offline tests with Python 3 and `lupa`: `python tests/run_tests.py`.
 
-Coverage includes date boundaries and DST, Concentration forecasts and spends, patron schedules, prior-expansion filtering/migration, custom reminder validation and recurrence, targeted deletion, reset API failure, compact grouping and actual Done button callbacks, saved sizes/modes/opacity, responsive layouts at multiple sizes, countdown text and frame/editor reuse. The 0.3.0 checks add 400 characters with 800 professions, pinned-current behavior, realm/profession/group filters, multi-group and bulk assignment, group rename/delete, actual chooser callbacks, page frame reuse, unscheduled compact Done, upcoming-only weeks, full opacity, About text and minimap clicks/visibility.
+Coverage includes date boundaries and DST, Concentration forecasts and spends, patron schedules, prior-expansion filtering/migration, custom reminder validation and recurrence, targeted deletion, reset API failure, compact grouping and actual check-in button callbacks, saved sizes/modes/opacity, responsive layouts at multiple sizes, countdown text and frame/editor reuse. The 0.3.0 checks add 400 characters with 800 professions, pinned-current behavior, realm/profession/group filters, multi-group and bulk assignment, group rename/delete, actual chooser callbacks, page frame reuse, unscheduled compact check-in, upcoming-only weeks, full opacity, About text and minimap clicks/visibility.
 
 These tests mock native frames and APIs. They do not establish pixel-perfect layout or event behavior inside the live client. For this update, also verify minimap placement/dragging, the new native rounded styling, roster filters/pagination and bulk group assignment on your actual client. Existing checks:
 
 1. Existing characters/patron schedules remain, with only Midnight visible initially.
-2. Prior expansions can be expanded and enabled in Settings.
+2. Prior expansions can be expanded and enabled in Preferences.
 3. Resize both modes, change opacity, and reload to check persistence.
-4. Confirm compact shows only the logged-in character, future cap/check times, and Done affects only that profession.
+4. Confirm compact shows only the logged-in character, future cap/check times, and Checked patrons affects only that profession.
 5. Confirm today's patron tasks appear after regional daily reset; earlier unfinished tasks remain overdue.
 5. Check daily/weekly countdowns against the game clock.
 6. Add, dismiss, edit and delete a custom note; try each repeat option.
@@ -173,3 +177,18 @@ For Lua errors, enable `/console scriptErrors 1` and provide the first error and
 Source references: [Blizzard API source mirror](https://github.com/Gethe/wow-ui-source), [CraftSim profession skill-line constants](https://github.com/derfloh205/CraftSim/blob/main/Util/Const.lua) and [CraftSim concentration model](https://github.com/derfloh205/CraftSim/blob/main/Classes/ConcentrationData.lua). DuckMoo Planner is an independent implementation.
 
 Patron reminder dates start at that date's regional daily reset, rather than local midnight. Before reset, today's patron work stays out of the Daily task list. Compact displays its scheduled time without calling it due. If the reset API is unavailable, today's new reminder waits until the API recovers; earlier overdue work remains visible.
+
+
+## 0.5.0 verification and delivery
+
+Automated Lua 5.1 checks pass for reset handling, DST, forecasts, note recurrence, real patron-check button callbacks, current-character compact scope, prior-expansion visibility, 400-character roster filtering/paging/groups, saved geometry/opacity, frame reuse, sidebar layouts and the palette chooser. Source-based PNG previews use fictional data and approximate fonts/icons; they are not WoW screenshots. Actual Retail rendering and live interaction still require in-game verification. This release is delivered as a ZIP and does not automatically install into WoW.
+
+
+## 0.5.1 reset timer visibility
+
+The full-window reset timer is now drawn inside the sidebar instead of underneath its background. Compact and full views have separate timer text elements, using each palette's main text color. The approved layout and reset calculations are unchanged.
+
+
+## 0.5.2 window stacking
+
+Main windows and standalone dialogs enable native top-level window behavior and render-layer flattening so their child panels stack as a single window when overlapping other DuckMoo windows. Clicking a window brings it forward. Layouts, colors, reset logic, data and chosen opacity remain unchanged. Actual overlapping-window rendering requires a Retail client check.

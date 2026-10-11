@@ -1,7 +1,35 @@
 local _, P = ...
 local M=P.Model
 local unpack=unpack or table.unpack
-local purple={0.68,0.43,0.95}
+P.TransFlag={{91/255,206/255,250/255},{245/255,169/255,184/255},{1,1,1},{245/255,169/255,184/255},{91/255,206/255,250/255}}
+P.Themes={
+ purple={name='DuckMoo Purple',bg={.065,.04,.09},panel={.105,.07,.14},button={.20,.12,.28},hover={.30,.19,.41},accent={.72,.45,1},text={.96,.92,1},muted={.73,.65,.83}},
+ gunmetal={name='Gunmetal',bg={.075,.078,.11},panel={.13,.135,.18},button={.18,.18,.25},hover={.24,.23,.33},accent={.65,.53,.89},text={.94,.94,.98},muted={.69,.71,.80}},
+ plum={name='Classic plum',bg={36/255,19/255,34/255},sidebar={50/255,27/255,48/255},panel={57/255,32/255,57/255},button={87/255,49/255,73/255},hover={115/255,65/255,94/255},accent={231/255,169/255,202/255},text={255/255,240/255,250/255},muted={226/255,195/255,216/255}},
+ light={name='Light mode - warm pastels',bg={247/255,214/255,172/255},sidebar={241/255,195/255,173/255},panel={255/255,233/255,181/255},button={242/255,188/255,180/255},hover={227/255,173/255,203/255},accent={166/255,77/255,89/255},text={70/255,40/255,44/255},muted={89/255,57/255,61/255}},
+ blizzard={name='Azeroth',bg={.055,.055,.06},panel={.10,.10,.11},button={.19,.15,.08},hover={.30,.24,.12},accent={.9,.72,.32},text={1,.94,.80},muted={.70,.66,.56}},
+ trans={name='Trans pride',bg={91/255,206/255,250/255},sidebar={245/255,169/255,184/255},panel={245/255,169/255,184/255},button={91/255,206/255,250/255},hover={245/255,169/255,184/255},accent={255/255,255/255,255/255},text={14/255,19/255,31/255},muted={36/255,48/255,64/255},stripes=P.TransFlag},
+ translight={name='Trans pride - dusk',bg={22/255,47/255,66/255},sidebar={64/255,38/255,54/255},panel={35/255,72/255,97/255},button={97/255,54/255,71/255},hover={117/255,66/255,86/255},accent={255/255,255/255,255/255},text={255/255,255/255,255/255},muted={226/255,211/255,222/255},stripes=P.TransFlag},
+ lesbian={name='Lesbian pride',bg={.12,.055,.09},panel={.19,.075,.13},button={.32,.11,.22},hover={.43,.15,.30},accent={1,.54,.30},text={1,.94,.96},muted={.94,.65,.77},stripes={{.84,.18,.02},{1,.60,.32},{1,1,1},{.82,.38,.64},{.64,.02,.38}}},
+ teal={name='Moonlit teal',bg={.035,.09,.10},panel={.055,.14,.16},button={.09,.24,.25},hover={.13,.32,.34},accent={.30,.85,.80},text={.90,1,.98},muted={.59,.78,.76}},
+ crimson={name='Crimson',bg={.09,.03,.035},panel={.15,.045,.055},button={.26,.07,.10},hover={.37,.11,.14},accent={.94,.32,.40},text={1,.93,.92},muted={.81,.61,.61}},
+ blue={name='Arcane blue',bg={.035,.055,.11},panel={.055,.085,.17},button={.09,.16,.30},hover={.14,.23,.40},accent={.39,.66,1},text={.94,.97,1},muted={.63,.73,.87}},
+}
+local purple={.72,.45,1}
+local function theme()return P.Themes[P.db and P.db.settings.theme or 'purple']or P.Themes.purple end
+P.surfaces={};P.themeTexts={};P.inputs={}
+function P.ApplyTheme()
+ local t=theme()
+ for _,f in ipairs(P.surfaces)do
+  local c=f._themeButton and(f._active and t.hover or t.button)or f._sidebar and(t.sidebar or t.panel)or f==P.frame and t.bg or t.panel
+  f:SetBackdropColor(c[1],c[2],c[3],1)
+  if f._themeButton then f:SetBackdropBorderColor(t.accent[1],t.accent[2],t.accent[3],f._active and 1 or 0)end
+ end
+ for _,f in ipairs(P.themeTexts)do local c=f._fixedColor or(f._muted and t.muted or t.text);f:SetTextColor(c[1],c[2],c[3])end
+ for _,f in ipairs(P.inputs)do f:SetTextColor(t.text[1],t.text[2],t.text[3])end
+ if P.stripes then for i,f in ipairs(P.stripes)do local c=t.stripes and t.stripes[i]or t.accent;f:SetVertexColor(c[1],c[2],c[3],1);f:SetShown(t.stripes~=nil or i==1)end end
+end
+
 -- WoW frames cannot be garbage collected. Recycle frames and font strings.
 P.dynamicParents={}
 local function acquire(parent,kind,template)
@@ -26,13 +54,15 @@ local function acquire(parent,kind,template)
 end
 local function label(parent,text,x,y,width,font)
     local f=acquire(parent,'FontString',font or 'GameFontHighlight')
-    f:SetFontObject(font or 'GameFontHighlight');f:SetHeight(0);f:SetWordWrap(true);f:SetTextColor(1,1,1);
+    f:SetFontObject(font or 'GameFontHighlight');f:SetHeight(0);f:SetWordWrap(true)
+    if not f._themeText then f._themeText=true;P.themeTexts[#P.themeTexts+1]=f end
+    f._fixedColor=nil;f._muted=font=='GameFontDisableSmall';local c=f._muted and theme().muted or theme().text;f:SetTextColor(c[1],c[2],c[3])
     f:SetPoint('TOPLEFT',x,y); f:SetWidth(width); f:SetJustifyH('LEFT'); f:SetText(text)
     return f
 end
 local function roundSurface(f)
     if f._round then return end
-    f._round={}
+    f._round={};P.surfaces[#P.surfaces+1]=f
     local radius=6
     local function texture()
         local t=f:CreateTexture(nil,'BACKGROUND');t:SetTexture('Interface/Buttons/WHITE8X8');f._round[#f._round+1]=t;return t
@@ -55,40 +85,49 @@ local function roundSurface(f)
     f.SetBackdropBorderColor=function(self,r,g,b,a) self._accent:SetVertexColor(r,g,b,a or 1) end
 end
 local function button(parent,text,x,y,width,action)
-    local b=acquire(parent,'Button','BackdropTemplate');roundSurface(b)
+    local b=acquire(parent,'Button','BackdropTemplate');roundSurface(b);b._themeButton=true;b._active=false
     if not b._caption then
         b._caption=b:CreateFontString(nil,'OVERLAY','GameFontHighlightSmall');b._caption:SetPoint('CENTER');b:SetFontString(b._caption)
     end
+    if not b._caption._themeText then b._caption._themeText=true;P.themeTexts[#P.themeTexts+1]=b._caption end
     b._caption:SetWidth(width-10);b._caption:SetWordWrap(false)
     b:SetSize(width,24);b:SetPoint('TOPLEFT',x,y);b:SetText(text);b:SetScript('OnClick',action)
-    b:SetScript('OnMouseDown',function(self) self:SetBackdropColor(.37,.23,.52,1) end)
-    b:SetScript('OnMouseUp',function(self) self:SetBackdropColor(.29,.19,.41,1) end)
-    b:SetBackdropColor(.18,.12,.26,.97);b:SetBackdropBorderColor(.50,.32,.70,0)
-    b:SetScript('OnEnter',function(self) self:SetBackdropColor(.29,.19,.41,1) end)
-    b:SetScript('OnLeave',function(self) self:SetBackdropColor(.18,.12,.26,.97) end)
+    b:SetScript('OnMouseDown',function(self) local c=theme().hover;self:SetBackdropColor(c[1],c[2],c[3],1) end)
+    b:SetScript('OnMouseUp',function(self) local c=theme().hover;self:SetBackdropColor(c[1],c[2],c[3],1) end)
+    local t=theme();b:SetBackdropColor(t.button[1],t.button[2],t.button[3],1);b._caption:SetTextColor(t.text[1],t.text[2],t.text[3]);b:SetBackdropBorderColor(t.accent[1],t.accent[2],t.accent[3],0)
+    b:SetScript('OnEnter',function(self) local c=theme().hover;self:SetBackdropColor(c[1],c[2],c[3],1) end)
+    b:SetScript('OnLeave',function(self) local c=self._active and theme().hover or theme().button;self:SetBackdropColor(c[1],c[2],c[3],1) end)
     return b
 end
 local function panel(parent,name)
     local f=name and CreateFrame('Frame',name,parent,'BackdropTemplate') or acquire(parent,'Frame','BackdropTemplate')
+    if parent==UIParent then
+        -- Stack the entire window as one render group, including deep children.
+        f:SetToplevel(true)
+        f:SetFlattensRenderLayers(true)
+    end
     roundSurface(f)
     f:SetAlpha(1);f:EnableMouse(true);f:SetScript('OnMouseUp',nil);f:SetScript('OnEnter',nil);f:SetScript('OnLeave',nil)
-    f:SetBackdropColor(.075,.052,.11,.98);f:SetBackdropBorderColor(.30,.22,.40,0)
+    local t=theme();f:SetBackdropColor(t.panel[1],t.panel[2],t.panel[3],1);f:SetBackdropBorderColor(t.accent[1],t.accent[2],t.accent[3],0)
     return f
 end
 local function tooltip(frame,title,lines)
     frame:SetScript('OnEnter',function(self)
-        if self._caption then self:SetBackdropColor(.29,.19,.41,1) end
+        if self._caption then local c=theme().hover;self:SetBackdropColor(c[1],c[2],c[3],1) end
         GameTooltip:SetOwner(self,'ANCHOR_RIGHT');GameTooltip:SetText(title)
         for _,s in ipairs(lines) do GameTooltip:AddLine(s,1,1,1,true) end
         GameTooltip:Show()
     end)
-    frame:SetScript('OnLeave',function(self) if self._caption then self:SetBackdropColor(.18,.12,.26,.97) end;GameTooltip:Hide() end)
+    frame:SetScript('OnLeave',function(self) if self._caption then local c=self._active and theme().hover or theme().button;self:SetBackdropColor(c[1],c[2],c[3],1) end;GameTooltip:Hide() end)
 end
 local function profession(r)
-    if r.expansion and r.expansion~='' and r.expansion~=r.name then return r.name..' ('..r.expansion..')' end
+    if r.expansion and r.expansion~='' and r.expansion~=r.name then
+        if r.expansion:lower():find(r.name:lower(),1,true)then return r.expansion end
+        return r.name..' ('..r.expansion..')'
+    end
     return r.name
 end
-local function plain(s) return (s or ''):gsub('|','||'):gsub('[\r\n]+',' ') end
+local function plain(s) return ((s or ''):gsub('|','||'):gsub('[\r\n]+',' ')) end
 local function description(e)
     if e.kind=='concentration' then return e.ready and 'FULL now' or 'Full '..M.Clock(e.at) end
     if e.kind=='note' then
@@ -101,8 +140,9 @@ local function description(e)
     return e.projected and 'Patron orders (forecast)' or 'Patron orders due'
 end
 local function editBox(parent,x,y,width)
-    local e=CreateFrame('EditBox',nil,parent,'InputBoxTemplate')
+    local e=CreateFrame('EditBox',nil,parent,'InputBoxTemplate');P.inputs[#P.inputs+1]=e
     e:SetSize(width,24);e:SetPoint('TOPLEFT',x,y);e:SetAutoFocus(false)
+    local t=theme();e:SetTextColor(t.text[1],t.text[2],t.text[3])
     e:SetScript('OnEscapePressed',function(self) self:ClearFocus() end)
     e:SetScript('OnEnterPressed',function(self) self:ClearFocus() end)
     return e
@@ -131,8 +171,8 @@ end
 function P.ApplyGeometry()
     local f,s=P.frame,P.db.settings
     P.layoutLock=true
-    local size=s.compact and (s.compactSize or {340,235}) or (s.fullSize or {800,450})
-    local minW,minH=s.compact and 260 or 600,s.compact and 110 or 260
+    local size=s.compact and (s.compactSize or {340,235}) or (s.fullSize or {1040,740})
+    local minW,minH=s.compact and 260 or 940,s.compact and 110 or 560
     local maxW,maxH=math.max(minW,UIParent:GetWidth()-20),math.max(minH,UIParent:GetHeight()-20)
     f:SetResizeBounds(minW,minH,maxW,maxH)
     f:SetSize(math.min(maxW,math.max(minW,size[1])),math.min(maxH,math.max(minH,size[2])))
@@ -152,32 +192,40 @@ function P.SetCompact(value)
     P.ApplyGeometry();P.Render()
 end
 function P.Layout()
-    local f=P.frame
-    local compact=P.db.settings.compact==true
-    local w,h=f:GetWidth(),f:GetHeight()
+    local f=P.frame;local compact=P.db.settings.compact==true;local w,h=f:GetWidth(),f:GetHeight()
     f:SetAlpha(compact and P.db.settings.compactAlpha or P.db.settings.fullAlpha)
-    P.title:SetWidth(compact and w-118 or 225)
-    P.title:SetText(compact and date('%a, %b %d',GetServerTime()) or 'Concentration Planner')
-    for _,b in ipairs(P.tabs) do
-        b:SetShown(not compact);b:SetBackdropBorderColor(.75,.48,.95,b.view==P.view and 1 or 0)
-    end
-    P.search:SetShown(not compact)
-    P.heading:SetShown(not compact)
-    P.prev:SetShown(not compact and (P.view=='daily' or P.view=='weekly' or P.view=='monthly'))
+    P.sidebar:SetShown(not compact);P.sidebar:SetSize(164,h-24)
+    P.title:ClearAllPoints();P.title:SetPoint('TOPLEFT',compact and 10 or 194,compact and -8 or -19)
+    local names={daily='Daily planning',weekly='Weekly outlook',monthly='Monthly outlook',reminders='Reminders',settings='Preferences'}
+    P.title:SetText(compact and date('%a, %b %d',GetServerTime())or(names[P.view]or'Daily planning'));P.title:SetWidth(compact and w-118 or w-356)
+    for _,b in ipairs(P.tabs)do b:SetShown(not compact);b._active=b.view==P.view end
+    P.context:SetShown(not compact);P.context:SetWidth(w-356)
+    P.context:SetText('Professions, concentration and patron check-ins')
+    P.search:SetShown(not compact);P.searchHint:SetShown(not compact and P.search:GetText()=='')
+    P.heading:SetShown(not compact);P.heading:ClearAllPoints();P.heading:SetPoint('TOPLEFT',334,-116);P.heading:SetWidth(w-362)
+    P.prev:ClearAllPoints();P.prev:SetPoint('TOPLEFT',194,-111)
+    P.today:ClearAllPoints();P.today:SetPoint('TOPLEFT',226,-111)
+    P.next:ClearAllPoints();P.next:SetPoint('TOPLEFT',294,-111)
+    P.prev:SetShown(not compact and(P.view=='daily'or P.view=='weekly'or P.view=='monthly'))
     P.next:SetShown(P.prev:IsShown());P.today:SetShown(P.prev:IsShown())
-    P.compactButton:ClearAllPoints();P.compactButton:SetPoint('TOPRIGHT',-34,-5)
-    P.compactButton:SetSize(compact and 70 or 78,22);P.compactButton:SetText(compact and 'Expand' or 'Compact')
-    P.addNote:ClearAllPoints();P.addNote:SetPoint('TOPRIGHT',-12,compact and -32 or -60)
+    if not P.prev:IsShown()then P.heading:ClearAllPoints();P.heading:SetPoint('TOPLEFT',194,-116);P.heading:SetWidth(w-222)end
+    P.compactButton:ClearAllPoints();P.compactButton:SetPoint('TOPRIGHT',-34,compact and -5 or -20)
+    P.compactButton:SetSize(compact and 70 or 78,22);P.compactButton:SetText(compact and 'Expand'or'Compact')
+    P.addNote:ClearAllPoints();P.addNote:SetPoint('TOPRIGHT',compact and -12 or -28,compact and -32 or -76)
     P.addNote:SetSize(compact and 68 or 82,22)
-    P.search:ClearAllPoints();P.search:SetPoint('TOPRIGHT',-12,-33);P.search:SetWidth(math.max(110,w-468))
-    P.countdown:ClearAllPoints();P.countdown:SetPoint('TOPLEFT',10,compact and -35 or -86);P.countdown:SetWidth(w-(compact and 92 or 20))
-    P.heading:SetWidth(w-245)
-    local top=compact and 64 or 111
-    P.scroll:ClearAllPoints();P.scroll:SetPoint('TOPLEFT',10,-top)
-    P.scroll:SetSize(w-38,math.max(30,h-top-19))
-    P.content:SetWidth(w-40);P.width=w-40
-    P.footer:ClearAllPoints();P.footer:SetPoint('BOTTOMLEFT',10,5);P.footer:SetWidth(w-32)
-    P.footer:SetText(compact and '/planner | drag corner to resize' or 'DuckMoo Services | /planner | Local time | drag corner to resize')
+    P.scanButton:SetShown(not compact)
+    P.search:ClearAllPoints();P.search:SetPoint('TOPLEFT',202,-76);P.search:SetWidth(math.max(110,w-432))
+    P.fullCountdown:SetShown(not compact);P.compactCountdown:SetShown(compact)
+    P.countdown=compact and P.compactCountdown or P.fullCountdown
+    P.countdown:ClearAllPoints()
+    if compact then P.countdown:SetPoint('TOPLEFT',10,-35);P.countdown:SetWidth(w-92)
+    else P.countdown:SetPoint('TOPLEFT',P.sidebar,'TOPLEFT',12,-304);P.countdown:SetWidth(140)end
+    local top=compact and 64 or 150;local left=compact and 10 or 194
+    P.scroll:ClearAllPoints();P.scroll:SetPoint('TOPLEFT',left,-top);P.scroll:SetSize(w-(compact and 38 or 222),math.max(30,h-top-28))
+    P.content:SetWidth(w-(compact and 40 or 222));P.width=P.content:GetWidth()
+    P.footer:ClearAllPoints();P.footer:SetPoint('BOTTOMLEFT',left,5);P.footer:SetWidth(w-left-28)
+    P.footer:SetText(compact and '/planner | drag corner to resize'or'Local time | Offline concentration is a forecast | /planner')
+    local c=P.Character();P.sideCharacter:SetText(c and c.name or'Current character');P.sideRealm:SetText(c and c.realm or'')
 end
 function P.UpdateCountdown()
     if not P.countdown then return end
@@ -187,6 +235,7 @@ function P.UpdateCountdown()
 end
 function P.BuildUI()
     local f=panel(UIParent,'DuckMooPlannerWindow');P.frame=f
+    f:SetBackdropColor(.075,.078,.11,1)
     f:SetFrameStrata('HIGH');f:SetClampedToScreen(true);f:SetMovable(true);f:SetResizable(true)
     f:RegisterForDrag('LeftButton');f:SetScript('OnDragStart',f.StartMoving)
     f:SetScript('OnDragStop',function(self) self:StopMovingOrSizing();P.SaveGeometry() end)
@@ -201,12 +250,20 @@ function P.BuildUI()
     end)
     local close=CreateFrame('Button',nil,f,'UIPanelCloseButton');close:SetPoint('TOPRIGHT',0,0)
     P.title=label(f,'DuckMoo Planner',10,-8,225,'GameFontNormalLarge')
+    P.sidebar=panel(f);P.sidebar._sidebar=true;P.sidebar:SetPoint('TOPLEFT',12,-12)
+    P.stripes={};for i=1,5 do local t=P.sidebar:CreateTexture(nil,'ARTWORK');t:SetTexture('Interface/Buttons/WHITE8X8');t:SetPoint('TOPLEFT',12,-10-(i-1)*4);t:SetSize(140,4);P.stripes[i]=t end
+    label(P.sidebar,'DuckMoo',12,-38,140,'GameFontNormalLarge')
+    label(P.sidebar,'CRAFTING PLANNER',12,-59,140,'GameFontDisableSmall')
+    label(P.sidebar,'PLANNING',12,-86,140,'GameFontDisableSmall')
     P.tabs={}
-    for i,v in ipairs({'daily','weekly','monthly','reminders','settings'}) do
-        local view=v
-        P.tabs[i]=button(f,view=='reminders' and 'Notes' or view:sub(1,1):upper()..view:sub(2),10+(i-1)*86,-32,82,function() P.Show(view) end)
-        P.tabs[i].view=view
+    for i,v in ipairs({{'daily','Daily'},{'weekly','Weekly'},{'monthly','Monthly'},{'reminders','Reminders'},{'settings','Preferences'}})do
+        local view=v[1];local b=button(P.sidebar,v[2],8,-109-(i-1)*34,148,function()P.Show(view)end);b:SetHeight(30);b.view=view;P.tabs[i]=b
     end
+    P.sideCharacter=label(P.sidebar,'',12,0,140,'GameFontNormal');P.sideCharacter:ClearAllPoints();P.sideCharacter:SetPoint('BOTTOMLEFT',12,57)
+    P.sideRealm=label(P.sidebar,'',12,0,140,'GameFontDisableSmall');P.sideRealm:ClearAllPoints();P.sideRealm:SetPoint('BOTTOMLEFT',12,38)
+    local version=label(P.sidebar,'v'..P.version,12,0,140,'GameFontDisableSmall');version:ClearAllPoints();version:SetPoint('BOTTOMLEFT',12,16)
+    P.context=label(f,'',194,-45,450,'GameFontDisableSmall')
+    P.scanButton=button(f,'Refresh',0,0,94,function()P.Discover();P.Render(true)end);P.scanButton:ClearAllPoints();P.scanButton:SetPoint('TOPRIGHT',-122,-76)
     P.compactButton=button(f,'Compact',0,0,78,function() P.SetCompact(not P.db.settings.compact) end)
     P.prev=button(f,'<',10,-60,28,function() P.Navigate(-1) end)
     P.today=button(f,'Today',42,-60,64,function()
@@ -215,10 +272,12 @@ function P.BuildUI()
     P.next=button(f,'>',110,-60,28,function() P.Navigate(1) end)
     P.addNote=button(f,'+ Note',0,0,82,function() P.NoteEditor() end)
     P.search=editBox(f,0,0,180);P.search:SetMaxLetters(80)
+    P.searchHint=label(P.search,'Search characters, professions or notes',2,-5,360,'GameFontDisableSmall')
     P.search:SetScript('OnTextChanged',function(self) P.filter=self:GetText();if P.content then P.Render() end end)
     tooltip(P.search,'Filter characters / professions / notes',{'Type part of a character, realm, profession, expansion or note.'})
     P.heading=label(f,'',150,-65,540,'GameFontNormal')
-    P.countdown=label(f,'',10,-86,740,'GameFontHighlightSmall')
+    P.compactCountdown=label(f,'',10,-35,248,'GameFontHighlightSmall')
+    P.fullCountdown=label(P.sidebar,'',12,-304,140,'GameFontHighlightSmall')
     P.scroll=CreateFrame('ScrollFrame',nil,f,'UIPanelScrollFrameTemplate')
     P.content=CreateFrame('Frame',nil,P.scroll);P.content:SetSize(760,1);P.scroll:SetScrollChild(P.content)
     P.footer=label(f,'',10,0,740,'GameFontDisableSmall')
@@ -245,7 +304,7 @@ function P.Navigate(delta)
 end
 function P.EventRow(e,y)
     local w=P.width
-    local row=P.Widget(panel(P.content));row:SetSize(w,40);row:SetPoint('TOPLEFT',0,-y)
+    local row=P.Widget(panel(P.content));row:SetSize(w,54);row:SetPoint('TOPLEFT',0,-y)
     if e.ready then row:SetBackdropBorderColor(.25,.8,.5,1)
     elseif e.kind=='patron' then row:SetBackdropBorderColor(.9,.65,.25,1)
     elseif e.kind=='note' then row:SetBackdropBorderColor(unpack(purple)) end
@@ -260,11 +319,11 @@ function P.EventRow(e,y)
     end
     local color=RAID_CLASS_COLORS and RAID_CLASS_COLORS[P.db.characters[e.guid].class]
     local name=label(row,e.character,8,-5,math.floor(w*.43))
-    name:SetWordWrap(false);if color then name:SetTextColor(color.r,color.g,color.b) end
-    local prof=label(row,profession(e.record),math.floor(w*.44),-5,w-math.floor(w*.44)-85,'GameFontHighlightSmall');prof:SetWordWrap(false)
-    label(row,description(e),8,-23,w-90,'GameFontHighlightSmall')
+    name:SetWordWrap(false);if color and theme().text[1]>.5 then name._fixedColor={color.r,color.g,color.b};name:SetTextColor(color.r,color.g,color.b)end
+    local prof=label(row,profession(e.record),math.floor(w*.44),-5,w-math.floor(w*.44)-12,'GameFontHighlightSmall');prof:SetWordWrap(false)
+    label(row,description(e),8,-25,w-145,'GameFontHighlightSmall')
     if e.kind=='patron' and not e.projected and M.PatronDue(e.record,GetServerTime(),P.GetResetSeconds('daily')) then
-        button(row,'Done',w-72,-8,64,function() M.Complete(e.record,GetServerTime());P.Render(true) end)
+        button(row,'Checked patrons',w-132,-25,124,function() M.Complete(e.record,GetServerTime());P.Render(true) end)
     end
     local r=e.record;local amount=M.Current(r,GetServerTime())
     local lines={description(e),'Last observed: '..(r.observedAt and date('%b %d, %Y',r.observedAt)..' '..M.Clock(r.observedAt) or 'Unknown')}
@@ -274,21 +333,38 @@ function P.EventRow(e,y)
 end
 function P.Empty(y) P.Text('Nothing due. Crafting gremlins on break.',8,-y,P.width-16,'GameFontHighlightSmall') end
 function P.Daily(now)
-    local first=M.Day(P.selectedDay or now);local last=M.AddDays(first,1)
+    local first=M.Day(P.selectedDay or now);local last=M.AddDays(first,1);local today=first==M.Day(now)
     P.heading:SetText(date('%A, %b %d, %Y',first))
-    local events=M.Events(P.db,first,last,now,M.Day(now)==first,true,P.filter)
-    if first==M.Day(now) then
-        local ready={};local seconds=P.GetResetSeconds('daily')
-        for _,e in ipairs(events) do
-            if e.kind~='patron' or M.PatronDue(e.record,now,seconds) then ready[#ready+1]=e end
+    local events=M.Events(P.db,first,last,now,today,true,P.filter)
+    local buckets={concentration={},patron={},note={}};local full=0
+    for _,e in ipairs(events)do
+        if not today or e.kind~='patron'or M.PatronDue(e.record,now,P.GetResetSeconds('daily'))then
+            buckets[e.kind][#buckets[e.kind]+1]=e
+            if e.kind=='concentration'and e.ready then full=full+1 end
         end
-        events=ready
     end
-    local intro=P.Text('Log into each character and open both crafting professions once. /planner or /dmp opens this window.\nAll dates and AM/PM times use your computer local time.',4,0,P.width-8,'GameFontHighlightSmall')
-    intro:SetWordWrap(true);intro:SetHeight(32)
-    for i,e in ipairs(events) do P.EventRow(e,38+(i-1)*43) end
-    if #events==0 then P.Empty(40) end
-    P.content:SetHeight(math.max(62,38+#events*43))
+    P.dailySections=buckets
+    local gap=8;local col=(P.width-16)/3
+    local summary={{'CONCENTRATION',today and(full..' full / '..(#buckets.concentration-full)..' caps today')or(#buckets.concentration..' caps')},{'PATRON CHECKS',#buckets.patron..(today and ' ready'or' scheduled')},{'REMINDERS',#buckets.note..(#buckets.note==1 and' reminder'or' reminders')}}
+    for i,v in ipairs(summary)do
+        local card=P.Widget(panel(P.content));card:SetPoint('TOPLEFT',(i-1)*(col+gap),0);card:SetSize(col,58)
+        label(card,v[1],10,-8,col-20,'GameFontDisableSmall');label(card,v[2],10,-28,col-20,'GameFontNormalLarge'):SetWordWrap(false)
+    end
+    P.Text(today and 'Ready bars remain visible until spent. Patron reminders become actionable after reset.'or'Dated forecasts and reminders for this day.',4,-70,P.width-8,'GameFontDisableSmall')
+    local y=98
+    for _,section in ipairs({{'concentration','Concentration'},{'patron','Patron checks'},{'note','Custom reminders'}})do
+        local list=buckets[section[1]]
+        if #list>0 then
+            P.Text(section[2],4,-y,P.width-8,'GameFontNormal');y=y+26
+            for _,e in ipairs(list)do P.EventRow(e,y);y=y+60 end
+            y=y+12
+        end
+    end
+    if #buckets.concentration+#buckets.patron+#buckets.note==0 then
+        P.Empty(y);y=y+28
+        P.Text('Open each crafting profession once to refresh its concentration snapshot. Add a note whenever you need one.',8,-y,P.width-16,'GameFontDisableSmall'):SetHeight(32);y=y+40
+    end
+    P.content:SetHeight(y+4)
 end
 function P.Weekly(now)
     local resetSeconds,fallback=P.ResetSeconds()
@@ -303,7 +379,7 @@ function P.Weekly(now)
         local count=0
         for _,e in ipairs(events) do
             local match=(e.kind=='patron' or e.kind=='note') and M.Key(e.at)==M.Key(a) or (e.kind=='concentration' and e.at>=a and e.at<b)
-            if match and not e.ready and not (P.weekOffset==0 and e.overdue) then P.EventRow(e,y);y=y+43;count=count+1 end
+            if match and not e.ready and not (P.weekOffset==0 and e.overdue) then P.EventRow(e,y);y=y+60;count=count+1 end
         end
         if count==0 then P.Text('Nothing scheduled',8,-y,P.width-16,'GameFontDisableSmall');y=y+18 end
         y=y+4
@@ -346,12 +422,13 @@ function P.Monthly(now)
     P.content:SetHeight(22+rows*(cellHeight+2))
 end
 function P.Compact(now)
-    local c=P.Character();local y=0
+    local c=P.Character();local y=0;local dense=P.db.settings.denseCompact
+    local rowHeight=dense and 60 or 74
     if c then
         local name=P.Text(c.name..'-'..c.realm,6,-3,P.width-12,'GameFontNormal')
         name:SetWordWrap(false)
         local color=RAID_CLASS_COLORS and RAID_CLASS_COLORS[c.class]
-        if color then name:SetTextColor(color.r,color.g,color.b) end
+        if color and theme().text[1]>.5 then name._fixedColor={color.r,color.g,color.b};name:SetTextColor(color.r,color.g,color.b)end
         y=25
         local professions={}
         for id,r in pairs(c.professions) do
@@ -372,15 +449,15 @@ function P.Compact(now)
                     patrons=at and stamp(at) or (M.Key(r.patron.due)..' (reset unavailable)')
                 end
             end
-            local row=P.Widget(panel(P.content));row:SetSize(P.width,74);row:SetPoint('TOPLEFT',0,-y)
-            label(row,r.name,6,-6,P.width-122):SetWordWrap(false)
-            local b=button(row,r.name..' Done',P.width-112,-3,106,function() M.CompletePatron(r,GetServerTime());P.Render(true) end)
+            local row=P.Widget(panel(P.content));row:SetSize(P.width,rowHeight);row:SetPoint('TOPLEFT',0,-y)
+            label(row,r.name,6,-6,P.width-148):SetWordWrap(false)
+            local b=button(row,'Checked patrons',P.width-138,-3,132,function() M.CompletePatron(r,GetServerTime());P.Render(true) end)
             b:SetHeight(21)
-            label(row,'Concentration: '..concentration,6,-29,P.width-12,'GameFontHighlightSmall'):SetWordWrap(false)
-            label(row,'Patrons: '..patrons,6,-49,P.width-12,'GameFontHighlightSmall'):SetWordWrap(false)
+            label(row,'Concentration: '..concentration,6,dense and -25 or -29,P.width-12,'GameFontHighlightSmall'):SetWordWrap(false)
+            label(row,'Patrons: '..patrons,6,dense and -42 or -49,P.width-12,'GameFontHighlightSmall'):SetWordWrap(false)
             tooltip(row,profession(r),{'Concentration: '..concentration,'Patrons: '..patrons,'All dates and times are local. Patron reminders start after daily reset.'})
-            tooltip(b,profession(r)..' patron orders',{'Next check: '..patrons,'Click Done to mark orders complete. Without a schedule, this starts the default four-day rotation.','You may mark orders done early.'})
-            y=y+77
+            tooltip(b,profession(r)..' patron orders',{'Next check: '..patrons,'Record that you checked patron orders. Without a schedule, this starts a four-day reminder.','This is your check-in reminder; it does not verify order completion. You can check early.'})
+            y=y+rowHeight+3
         end
         if #professions==0 then
             local text=P.Text('Open your crafting professions to collect data. Check prior-expansion visibility in Settings if needed.',6,-y,P.width-12,'GameFontHighlightSmall')
@@ -400,7 +477,7 @@ function P.ScheduleEditor(r,character)
         f=panel(UIParent,'DuckMooPlannerPatronEditor');P.editor=f;table.insert(UISpecialFrames,'DuckMooPlannerPatronEditor');f:SetSize(460,265);f:SetPoint('CENTER');f:SetFrameStrata('DIALOG')
         label(f,'Patron schedule',16,-14,410,'GameFontNormalLarge')
         f.caption=label(f,'',16,-43,420)
-        f.modeText=function() f.modeButton:SetText(f.mode=='four' and 'Every 4 days after Done' or 'Every '..names[f.weekday]) end
+        f.modeText=function() f.modeButton:SetText(f.mode=='four' and 'Every 4 days after checking' or 'Every '..names[f.weekday]) end
         f.modeButton=button(f,'',16,-89,280,function() f.mode=f.mode=='four' and 'weekly' or 'four';f.modeText() end)
         button(f,'Next weekday',305,-89,135,function() f.mode='weekly';f.weekday=f.weekday%7+1;f.modeText() end)
         label(f,'First due date (YYYY-MM-DD)',16,-124,310)
@@ -455,7 +532,7 @@ function P.Settings(now)
     for i,v in ipairs({'roster','appearance','about'}) do
         local tab=v
         local b=P.Widget(button(P.content,v:sub(1,1):upper()..v:sub(2),4+(i-1)*120,0,114,function() P.settingsTab=tab;P.rosterPage=1;P.Render() end))
-        b:SetBackdropBorderColor(.75,.48,.95,P.settingsTab==v and 1 or 0)
+        b._active=P.settingsTab==v;b:SetBackdropBorderColor(.75,.48,.95,b._active and 1 or 0)
     end
     if P.settingsTab=='appearance' then P.Appearance(now)
     elseif P.settingsTab=='about' then P.About(now)
@@ -542,7 +619,7 @@ function P.Render(preserveScroll)
     elseif P.view=='settings' then P.Settings(now)
     elseif P.view=='reminders' then P.Reminders(now)
     else P.Daily(now) end
-    P.dynamic=false
+    P.dynamic=false;P.ApplyTheme()
     P.UpdateCountdown()
     P.scroll:SetVerticalScroll(math.min(scroll,math.max(0,P.content:GetHeight()-P.scroll:GetHeight())))
 end
@@ -580,7 +657,7 @@ function P.OpacityControl(key,title,y)
     local caption=P.Text(title..': '..math.floor(s[key]*100+.5)..'%',4,-y,235,'GameFontHighlightSmall')
     local slider=P.Widget(acquire(P.content,'Slider','BackdropTemplate'))
     slider:SetSize(math.min(280,P.width-250),17);slider:SetPoint('TOPLEFT',245,-y);slider:SetOrientation('HORIZONTAL')
-    slider:SetBackdrop({bgFile='Interface/Buttons/WHITE8X8'});slider:SetBackdropColor(.16,.10,.22,1)
+    slider:SetBackdrop({bgFile='Interface/Buttons/WHITE8X8'});slider:SetBackdropColor(.13,.135,.18,1)
     slider:SetThumbTexture('Interface/Buttons/UI-SliderBar-Button-Horizontal');slider:SetMinMaxValues(20,100);slider:SetValueStep(5);slider:SetObeyStepOnDrag(true)
     slider:SetScript('OnValueChanged',nil);slider:SetValue(s[key]*100)
     slider:SetScript('OnValueChanged',function(_,value)
@@ -597,7 +674,14 @@ function P.Appearance(now)
     P.opacitySlider=P.OpacityControl('compactAlpha','Compact window opacity',146)
     P.Text('Glass for the planner, breathing room for Azeroth. Defaults: full 85%, compact 65%.',4,-182,P.width-8,'GameFontHighlightSmall')
     P.Text('Resize each mode from its bottom-right corner. Sizes and positions are remembered separately.',4,-207,P.width-8,'GameFontHighlightSmall')
-    P.content:SetHeight(235)
+    P.Checkbox('Use denser compact profession rows',0,238,P.width,s.denseCompact,function(v)s.denseCompact=v;P.Render(true)end)
+    P.Text('Keeps both forecasts and Checked patrons; reduces spacing without shrinking the text.',4,-270,P.width-8,'GameFontHighlightSmall')
+    P.Widget(button(P.content,'Palette: '..theme().name,4,-306,math.min(P.width-8,370),function()
+        local options={};for id,t in pairs(P.Themes)do options[#options+1]={label=t.name,value=id}end
+        table.sort(options,function(a,b)return a.label<b.label end)
+        P.Choose('Choose a palette',options,function(id)P.db.settings.theme=id;P.Render(true);P.ApplyTheme()end)
+    end))
+    P.content:SetHeight(340)
 end
 function P.GroupEditor(guids)
     local f=P.groupEditor
@@ -669,7 +753,7 @@ function P.CharacterRoster(e,y,pinned)
     end
     local title=label(row,(pinned and 'This character: ' or '')..e.name..' | '..e.realm,offset,-6,w-offset-150)
     title:SetWordWrap(false)
-    local color=RAID_CLASS_COLORS and RAID_CLASS_COLORS[e.c.class];if color then title:SetTextColor(color.r,color.g,color.b) end
+    local color=RAID_CLASS_COLORS and RAID_CLASS_COLORS[e.c.class];if color and theme().text[1]>.5 then title._fixedColor={color.r,color.g,color.b};title:SetTextColor(color.r,color.g,color.b)end
     local group=button(row,'Groups',w-82,-2,74,function() P.GroupEditor({e.guid}) end)
     tooltip(group,'Character groups',{e.groups~='' and e.groups or 'No groups assigned.','Create or assign multiple groups for this character.'})
     for i,v in ipairs(e.professions) do
@@ -678,7 +762,7 @@ function P.CharacterRoster(e,y,pinned)
         local text=label(row,r.name..(M.IsMidnight(r,v.id) and '' or ' [prior]')..'  |  '..status,12,-top-4,w-295,'GameFontHighlightSmall');text:SetWordWrap(false)
         local schedule=r.patron and (r.patron.mode=='four' and '4-day' or 'Weekly') or 'Set schedule'
         local b=button(row,schedule,w-278,-top,110,function() P.ScheduleEditor(r,e.name..'-'..e.realm) end)
-        tooltip(b,profession(r),{r.patron and ('Patrons due '..M.Key(r.patron.due)) or 'Choose a patron reminder schedule.','Compact Done creates a four-day schedule if none exists.'})
+        tooltip(b,profession(r),{r.patron and ('Patrons due '..M.Key(r.patron.due)) or 'Choose a patron reminder schedule.','Checked patrons starts a four-day reminder if none exists.'})
         button(row,r.hidden and 'Show' or 'Hide',w-161,-top,65,function() r.hidden=not r.hidden;P.Render(true) end)
         button(row,'Forget',w-89,-top,77,function() P.ForgetProfession(v) end)
     end
@@ -764,7 +848,7 @@ function P.About(now)
     paragraph('Your alt army has Concentration. You have approximately twelve browser tabs open in your brain. This is mission control for the crafting gremlins: recharge forecasts, patron reminders, a calendar, and a compact dashboard for the character you are on.',68)
     paragraph('Deploy the ducks: log into each character and open both crafting professions once. Use /planner or /dmp, or click the minimap duck. Daily catches full bars and today\'s work. Weekly looks ahead. Monthly puts future caps on actual dates. Compact keeps the marching orders small.',68)
     paragraph('Wrangle the horde in Settings > Roster: pin your current character, filter by profession or realm, sort the alt army, and make your own groups. Check several characters and use Group selected to assign them together. Prior expansions stay tucked away until invited.',68)
-    paragraph('Patron Done starts a four-day schedule if you have not set one. Configure a weekday if that suits your routine better. Add custom notes for all the side quests your actual brain refuses to keep in RAM.',54)
+    paragraph('Checked patrons starts a four-day reminder if you have not set one. Configure a weekday if that suits your routine better. Add custom notes for all the side quests your actual brain refuses to keep in RAM.',54)
     paragraph('All dates and AM/PM times use your computer local time. Offline Concentration is an estimate from the last observed snapshot. Visit each character to refresh it. This planner does not craft, submit orders, or switch characters for you. The gremlins still need a pilot.',68,'GameFontHighlightSmall')
     paragraph('Find the DuckMoo universe',23,'GameFontNormal')
     paragraph('Books: amazon.com/author/kenzieduckmoo',28,'GameFontHighlightSmall')

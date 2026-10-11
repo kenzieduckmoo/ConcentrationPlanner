@@ -1,7 +1,7 @@
 local addon, P = ...
 DuckMooPlanner = P
 P.name = addon
-P.version = '0.3.0'
+P.version = '0.5.2'
 P.fullName = 'DuckMoo Services: Concentration Planner'
 P.publisher = 'DuckMoo Media'
 P.weekOffset = 0
@@ -10,6 +10,13 @@ P.filter = ''
 P.followToday = true
 local M = P.Model
 function P.Print(s) print('|cffbf8fffDuckMoo Planner:|r '..s) end
+function P.ExportRoster()
+    local out={}
+    for guid,c in pairs(P.db and P.db.characters or {})do
+        out[guid]={name=c.name,realm=c.realm,class=c.class,className=c.className,lastSeen=c.lastSeen}
+    end
+    return out
+end
 local function safe(fn,...)
     if type(fn) ~= 'function' then return nil end
     local ok, result = pcall(fn,...)

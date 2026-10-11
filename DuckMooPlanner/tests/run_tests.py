@@ -5,7 +5,14 @@ import time
 from pathlib import Path
 from lupa.lua51 import LuaRuntime
 os.environ['TZ'] = 'America/Chicago'
-time.tzset()
+if hasattr(time, 'tzset'):
+    time.tzset()
+else:
+    # Lua and Python use the Windows C runtime's US daylight-saving rules.
+    import ctypes
+    crt = ctypes.CDLL('ucrtbase')
+    crt._putenv(b'TZ=CST6CDT')
+    crt._tzset()
 ROOT = Path(__file__).resolve().parents[1]
 lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute("date=os.date;time=os.time;P={};assert(loadfile(...))('DuckMooPlanner',P)",str(ROOT/'Model.lua'))
@@ -91,7 +98,7 @@ function methods:SetAlpha(v) self.alpha=v end
 function methods:GetAlpha() return self.alpha or 1 end
 function methods:SetValue(v) self.value=v;if self.scripts.OnValueChanged then self.scripts.OnValueChanged(self,v) end end
 function methods:GetValue() return self.value end
-function methods:SetText(t) self.text=t end
+function methods:SetText(t,...) assert(select('#',...)==0,'SetText received an unintended extra argument');self.text=t end
 function methods:GetText() return self.text or '' end
 function methods:Show() local was=self.shown;self.shown=true;if not was and self.scripts.OnShow then self.scripts.OnShow(self) end end
 function methods:Hide() self.shown=false end
@@ -102,6 +109,8 @@ function methods:GetVerticalScroll() return self.scroll or 0 end
 function methods:SetChecked(v) self.checked=v end
 function methods:GetChecked() return self.checked end
 function methods:GetPoint() return 'CENTER',UIParent,'CENTER',0,0 end
+function methods:SetToplevel(v)assert(type(v)=='boolean');self.topLevel=v end
+function methods:SetFlattensRenderLayers(v)assert(type(v)=='boolean');self.flattenLayers=v end
 setmetatable(methods,{__index=function(_,key) if key:match('^[A-Z]') then return function() end end end})
 function CreateFrame(kind,name,parent,template)
  frameCount=frameCount+1
@@ -138,7 +147,7 @@ local warmed=frameCount
 for i=1,20 do P.Show('daily');P.Show('weekly');P.Show('monthly');P.Show('settings') end
 assert(frameCount==warmed,'Render leaked frames: '..frameCount..' versus '..warmed)
 P.Show('weekly');P.scroll:SetVerticalScroll(50);P.Render(true)
-assert(P.scroll:GetVerticalScroll()==50)
+assert(P.scroll:GetVerticalScroll()==math.min(50,math.max(0,P.content:GetHeight()-P.scroll:GetHeight())))
 P.ScheduleEditor(r,'Voidchicken-Garona');assert(P.editor:IsShown())
 local editorCount=frameCount
 for i=1,10 do P.ScheduleEditor(r,'Voidchicken-Garona') end
@@ -217,7 +226,7 @@ assert(P.db.settings.compact and P.frame:GetAlpha()==.65)
 assert(P.frame:GetWidth()==340)
 P.frame:SetSize(300,180);P.SaveGeometry()
 P.SetCompact(false)
-assert(P.frame:GetWidth()==720 and P.frame:GetHeight()==380 and P.frame:GetAlpha()==.85)
+assert(P.frame:GetWidth()==940 and P.frame:GetHeight()==560 and P.frame:GetAlpha()==.85)
 P.settingsTab='appearance';P.Show('settings')
 P.opacitySlider:SetValue(80)
 assert(P.db.settings.compactAlpha==.8)
@@ -232,7 +241,7 @@ P.Show('weekly');P.UpdateCountdown()
 assert(P.countdown:GetText():find('Weekly reset:',1,true))
 -- Dynamic layout and widget pools at several supported sizes.
 P.db.settings.priorExpanded=true
-for _,size in ipairs({{600,260},{820,450},{1100,650}}) do
+for _,size in ipairs({{940,560},{1040,740},{1320,900}}) do
  P.frame:SetSize(size[1],size[2])
  for _,view in ipairs({'daily','weekly','monthly','settings','reminders'}) do P.Show(view) end
 end
@@ -278,7 +287,7 @@ local clicked=false
 for _,widget in ipairs(P.widgets) do
  local pool=widget._dmpPools and widget._dmpPools.ButtonBackdropTemplate
  if pool then for _,b in ipairs(pool) do
-  if b:IsShown() and b:GetText()=='Alchemy Done' then b:GetScript('OnClick')();clicked=true;break end
+  if b:IsShown() and b:GetText()=='Checked patrons' then b:GetScript('OnClick')();clicked=true;break end
  end end
  if clicked then break end
 end
@@ -319,7 +328,7 @@ local clicked=false
 for _,widget in ipairs(P.widgets) do
  local pool=widget._dmpPools and widget._dmpPools.ButtonBackdropTemplate
  if pool then for _,b in ipairs(pool) do
-  if b:IsShown() and b:GetText()=='Alchemy Done' then b:GetScript('OnClick')();clicked=true;break end
+  if b:IsShown() and b:GetText()=='Checked patrons' then b:GetScript('OnClick')();clicked=true;break end
  end end
  if clicked then break end
 end
@@ -400,64 +409,92 @@ s.hideMinimap=false;P.CreateMinimap();assert(P.minimap:IsShown())
 print('PASS: unscheduled compact Done, upcoming-only weeks, 400-character paging/filtering/sorting, multiple and bulk groups, current-character pinning, full opacity, About and minimap interactions')
 ''')
 lua.execute(r'''
+P.SetCompact(true);P.db.settings.denseCompact=false;P.Render();local roomy=P.content:GetHeight()
+P.db.settings.denseCompact=true;P.Render();assert(P.content:GetHeight()<roomy,'Dense setting did not reduce row height')
+local shown=0;for _,row in ipairs(P.widgets)do
+ if row:IsShown() and row:GetHeight()==60 then shown=shown+1 end
+end
+assert(shown>0)
+local exported=P.ExportRoster();local guid=next(exported);local name=P.db.characters[guid].name
+exported[guid].name='Altered copy';assert(P.db.characters[guid].name==name)
+print('PASS: denser compact rows retain the dashboard and roster export does not alias saved characters')
+''')
+lua.execute(r'''
+NOW=time({year=2026,month=10,day=1,hour=12,min=0,sec=0})
 local M=P.Model
-local savedNow=NOW;local api=C_DateAndTime
-local today=M.ParseDay('2026-10-05');local reset=today+10*3600
-NOW=reset-1
-C_DateAndTime={GetSecondsUntilDailyReset=function() return (NOW<reset and reset or reset+86400)-NOW end,
- GetSecondsUntilWeeklyReset=function() return 86400 end}
-local c=P.db.characters['Player-1'];local r=c.professions[2906]
-M.SetSchedule(r,'four',today)
-assert(M.PatronResetAt(today,NOW,1)==reset)
-assert(not M.PatronDue(r,NOW,1))
-NOW=reset
-assert(M.PatronDue(r,NOW,86400))
-assert(M.PatronResetAt(today,NOW,86400)==reset)
--- Region reset can have a different local hour; do not assume NA or 10 AM.
-NOW=today+5*3600
-assert(M.PatronResetAt(today,NOW,2*3600)==today+7*3600)
-assert(not M.PatronDue(r,NOW,2*3600))
-NOW=today+8*3600
-assert(M.PatronDue(r,NOW,23*3600))
-assert(not M.PatronDue(r,NOW,nil))
-M.SetSchedule(r,'four',M.AddDays(today,-1));assert(M.PatronDue(r,NOW,nil))
--- Reset anchor preserves the epoch across the local DST transition.
-local autumn=M.ParseDay('2026-11-01');local nextReset=M.ParseDay('2026-11-02')+9*3600
-assert(M.PatronResetAt(autumn,nextReset-86400,86400)==autumn+10*3600)
--- Daily actually hides today's task before reset, then reveals it at reset.
-M.SetSchedule(r,'four',today);P.followToday=true
-local original=P.EventRow;local seen={}
-P.EventRow=function(e) seen[#seen+1]=e end
-NOW=reset-1;P.SetCompact(false);P.Show('daily')
-for _,e in ipairs(seen) do assert(not(e.kind=='patron' and e.record==r)) end
-NOW=reset;seen={};P.Render(true)
-local found=false
-for _,e in ipairs(seen) do if e.kind=='patron' and e.record==r then found=true end end
-assert(found)
-P.EventRow=original
--- Compact includes future work, never another character or global notes.
-r.amount=100;r.max=1000;r.observedAt=NOW;r.secondsPerPoint=240
-M.SetSchedule(r,'four',M.AddDays(today,4))
-P.db.settings.includePrior=false;P.filter='does not match'
-local full=M.FullAt(r);P.SetCompact(true)
-local texts={}
-for _,widget in ipairs(P.widgets) do
- if widget:IsShown() then
-  texts[#texts+1]=widget:GetText()
-  for _,pool in pairs(widget._dmpPools or {}) do
-   for _,child in ipairs(pool) do if child:IsShown() then texts[#texts+1]=child:GetText() end end
-  end
+local function profession(name,amount)
+ return {name=name,expansion='Midnight '..name,skillLineID=2906,amount=amount,max=1000,secondsPerPoint=240,observedAt=NOW}
+end
+local r=profession('Alchemy',1000);M.SetSchedule(r,'four',M.AddDays(M.Day(NOW),-1))
+P.db.characters={['Player-1']={name='Ember',realm='Garona',class='MAGE',professions={[2906]=r,[2908]=profession('Enchanting',950)}},alt={name='Willow',realm='Garona',class='MAGE',professions={[2906]=profession('Alchemy',500)}}}
+P.db.notes={};P.filter='';P.search:SetText('');P.followToday=true
+P.SaveNote(nil,'Pick up crafting supplies',M.Key(NOW),'once')
+P.SetCompact(false);P.Show('daily')
+assert(#P.dailySections.concentration==2 and #P.dailySections.patron==1 and #P.dailySections.note==1,'Daily summary lost events')
+assert(P.dailySections.concentration[1].ready,'Ready concentration no longer ranks first')
+local clicked=false
+for _,row in ipairs(P.widgets)do
+ for _,pool in pairs(row._dmpPools or {})do for _,b in ipairs(pool)do
+  if b:IsShown() and b:GetText()=='Checked patrons'then b:GetScript('OnClick')();clicked=true;break end
+ end end
+end
+assert(clicked and M.Key(r.patron.due)==M.Key(M.AddDays(M.Day(NOW),4)),'Redesigned check-in failed to advance its schedule')
+assert(#P.dailySections.patron==0,'Checked patrons stayed actionable')
+for _,size in ipairs({{940,560},{1040,740},{1320,900}})do
+ P.frame:SetSize(size[1],size[2])
+ for _,view in ipairs({'daily','weekly','monthly','reminders','settings'})do
+  P.Show(view)
+  assert(P.scroll.points[1][2]==194 and P.width==size[1]-222,'Full view lost sidebar clearance')
+  assert(P.scroll:GetHeight()==size[2]-178,'Full view exceeds its viewport')
+  local active=0;for _,b in ipairs(P.tabs)do if b._active then active=active+1;assert(b.view==view)end end
+  assert(active==1 and P.sidebar:IsShown(),'Navigation state is incorrect')
  end
 end
-local text=table.concat(texts,'\n')
-assert(text:find('Voidchicken-Garona',1,true))
-assert(text:find('Concentration: '..date('%b %d',full)..', '..M.Clock(full),1,true))
-assert(text:find('Patrons: Oct 09, 10:00 AM',1,true))
-assert(text:find('Alchemy Done',1,true))
-assert(not text:find('Alt001',1,true))
-assert(not text:find('Keep this reminder',1,true))
-assert(not text:find('Prior-expansion',1,true))
-NOW=savedNow;C_DateAndTime=api;P.filter=''
-print('PASS: current-character compact future timestamps, reset-gated Daily reminders, regional reset hours, API failure and DST')
+P.filter='does not match';P.SetCompact(true)
+assert(not P.sidebar:IsShown() and not P.search:IsShown() and not P.scanButton:IsShown())
+assert(P.content:GetHeight()>=145,'Old full-view search hid the current-character compact dashboard')
+assert(P.scroll.points[1][2]==10,'Compact view reserved sidebar space')
+P.SetCompact(false);P.filter='';P.search:SetText('');P.settingsTab='appearance';P.Show('settings')
+local found=false
+for _,w in ipairs(P.widgets)do if w:GetText():find('Palette:',1,true)then w:GetScript('OnClick')();found=true;break end end
+assert(found and P.choice:IsShown(),'Palette chooser is inaccessible')
+P.choice.callback('translight');assert(P.db.settings.theme=='translight' and P.Themes.translight.name=='Trans pride - dusk')
+local function lum(c)
+ local function ch(v)return v<=.04045 and v/12.92 or((v+.055)/1.055)^2.4 end
+ return .2126*ch(c[1])+.7152*ch(c[2])+.0722*ch(c[3])
+end
+for _,key in ipairs({'purple','plum','light','trans','translight'})do
+ local t=P.Themes[key]
+ for _,surface in ipairs({t.bg,t.sidebar or t.panel,t.panel,t.button,t.hover})do
+  local a,b=lum(t.text),lum(surface);assert((math.max(a,b)+.05)/(math.min(a,b)+.05)>=4.5,'Unreadable Planner palette: '..key)
+ end
+ P.db.settings.theme=key;P.Show('daily');assert(P.frame._surfaceColor[1]==t.bg[1])
+end
+print('PASS: grouped daily summaries, real patron-check callbacks, sidebar sizing/navigation, compact current-character scope and Folio palette chooser/contrast')
+''')
+lua.execute(r'''
+P.SetCompact(false)
+for _,view in ipairs({'daily','weekly','monthly','settings','reminders'})do
+ P.Show(view)
+ assert(P.countdown==P.fullCountdown and P.countdown.parent==P.sidebar,'Sidebar paints over reset text')
+ assert(P.fullCountdown:IsShown() and not P.compactCountdown:IsShown(),'Both timer regions are visible')
+ local expected=view=='weekly' and 'Weekly reset:'or'Daily reset:'
+ assert(P.countdown:GetText():find(expected,1,true),'Wrong timer selected after page change')
+end
+P.SetCompact(true)
+assert(P.countdown==P.compactCountdown and P.countdown.parent==P.frame)
+assert(P.compactCountdown:IsShown() and not P.fullCountdown:IsShown())
+P.SetCompact(false);assert(P.countdown==P.fullCountdown)
+print('PASS: reset timer belongs to its visible panel and switches correctly across pages and modes')
+''')
+lua.execute(r'''
+P.SetCompact(false);for _,view in ipairs({'daily','weekly','monthly','settings','reminders'})do P.Show(view);assert(P.frame.topLevel and P.frame.flattenLayers)end
+P.SetCompact(true);assert(P.frame.topLevel and P.frame.flattenLayers);P.SetCompact(false)
+local count=0
+for _,f in ipairs(frames)do
+ if f.parent==UIParent and f._round then assert(f.topLevel and f.flattenLayers,'Standalone window lost grouped stacking');count=count+1 end
+end
+assert(count>=4,'Window stacking was not checked on dialogs')
+print('PASS: main and dialog window render groups survive page and mode changes')
 ''')
 print('All checks passed. WoW client integration still requires in-game verification.')

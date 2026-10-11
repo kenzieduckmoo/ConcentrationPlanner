@@ -1,3 +1,43 @@
+# v0.5.2
+
+- Enable top-level window behavior and render-layer flattening on main windows and standalone dialogs. This keeps child panels in their window's stacking group instead of interleaving with another DuckMoo window.
+- Preserve internal control layering, approved layouts, palettes, data, calculations and saved opacity.
+- Add regression checks for main/dialog window configuration across page changes and mode switching. Actual overlap behavior requires a client check.
+
+# v0.5.1
+
+- Fix full-window reset text being drawn beneath the sidebar background. Use separate sidebar/full and main-window/compact timer elements with the theme's main text color.
+- Add regression checks for timer parentage, visibility, daily/weekly selection and switching modes. Preserve the approved layout and all reset calculations.
+
+# v0.5.0
+
+- Rebuild the full window with Folio-style sidebar navigation, persistent search, profession Refresh and quick-note controls.
+- Add daily summary cards and separate concentration, patron-check and reminder sections. Preserve reset gating, ready bars and forecast semantics.
+- Retain weekly/monthly views, reminders and roster/group/settings tools within the redesigned full window.
+- Add the approved Folio palettes under Preferences > Appearance; preserve independent addon data and settings.
+- Keep the compact current-character layout, dense/standard rows, Checked patrons, auto-fit and separate geometry. Migrate small full windows to the new 940 by 560 minimum.
+- Extend actual Lua 5.1 UI checks for daily grouping, patron actions, sidebar sizing, compact scope and palette selection. Live Retail verification remains outstanding.
+
+# 0.4.3 repair
+
+- Normalize the text sanitizer to return one value to native UI methods. Preserve the approved Checked patrons behavior and existing layout.
+- Regression mocks now reject unintended extra native text arguments.
+
+# v0.4.2
+
+- Align the fixed window palette with Folio and Warband Planner's charcoal/purple styling.
+- Add an optional denser compact dashboard with 60-pixel profession rows; retain both forecasts, check-in controls and the standard layout.
+- Expose a detached identity-only roster snapshot for optional read-only integration with Warband Planner.
+- Preserve current-character scope, saved geometry/opacity, schedules and existing reminders.
+
+# v0.4.1
+
+- Rename patron check-in buttons to Checked patrons and clarify that they record a check, not verified order completion.
+- Preserve patron recurrence behavior and the current-character compact dashboard.
+- Align the displayed version, manifest and README.
+- Reserve enough row space for the new labels.
+- Make the test runner work with the Windows C runtime timezone rules; retain daylight-saving transition checks.
+
 # 0.4.0
 
 - Replace compact's alt roster with the logged-in character and every visible profession, regardless of whether work is due.
