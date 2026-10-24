@@ -2,9 +2,9 @@
 ## Title: DuckMoo Services: Concentration Planner
 ## Notes: A calendar and daily crafting planner for your Concentration and patron orders.
 ## Author: DuckMoo Media
-## Version: 0.5.2
+## Version: 0.5.3
 ## SavedVariables: DuckMooPlannerDB
-## Category: Professions
+## Category: DuckMoo Media
 Model.lua
 Core.lua
 Minimap.lua
